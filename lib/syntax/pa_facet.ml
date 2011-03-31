@@ -28,32 +28,47 @@ struct
  
     let rec create_expr _loc id ty = 
       match ty with 
-	| <:ctyp< $lid:label$ : bool >> | <:ctyp< $lid:label$ : string >> ->
+	| <:ctyp< $lid:label$ : bool >> ->
 	  <:expr<
 	    fun h acc -> 
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc ] >>
-	| <:ctyp< $lid:label$ : list string >> ->
-	  <:expr<
-	    fun h acc -> 
-	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc ] >>
+		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc 
+		  | `Exact k -> try S.add (Hashtbl.find h k) acc with [ Not_found -> acc ] ] >>
 
+	| <:ctyp< $lid:label$ : string >> | <:ctyp< $lid:label$ : list string >> ->
+	  <:expr<
+	    fun h acc -> 
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc 
+		  | `Exact k -> try S.add (Hashtbl.find h k) acc with [ Not_found -> acc ] 
+		 (* | Prefix p -> Hashtbl.fold (fun k v acc -> if test_prefix p k then S.add v acc else acc) h acc  *) ] >>
+		    
 	| <:ctyp< $lid:label$ : bool; $ty$ >> | <:ctyp< $lid:label$ : string ; $ty$ >> ->
 	  <:expr< 
 	    fun h acc -> 
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v acc -> $create_expr _loc id ty$ v acc) h acc ] >>
+		  [ `All -> Hashtbl.fold (fun _ v acc -> $create_expr _loc id ty$ v acc) h acc 
+		  | `Exact k -> try $create_expr _loc id ty$ (Hashtbl.find h k) acc with [ Not_found -> acc ] ] >>
 	| _ -> raise BadType
 
    let rec create_params params _loc id ty = 
      match ty with 
-       | <:ctyp< $lid:label$ : $_$ >> -> <:expr< let f ? ($lid:label$ = `All) = S.elements ($create_expr _loc id params$ h S.empty) in f >>
-       | <:ctyp< $lid:label$ : $_$; $ty$ >> -> <:expr< let f ? ($lid:label$ = `All) = $create_params params _loc id ty$ in f >>
+       | <:ctyp< $lid:label$ : $_$ >> -> <:expr< let f ~ $lid:label$  = S.elements ($create_expr _loc id params$ h S.empty) in f >>
+       | <:ctyp< $lid:label$ : $_$; $ty$ >> -> <:expr< let f ~ $lid:label$ = $create_params params _loc id ty$ in f >>
        | _ -> raise BadType
 
+   let rec create_type _loc id ty = 
+     
+     match ty with 
+       | <:ctyp< $lid:label$ : bool >> -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of bool ]) -> list S.elt >> 
+       | <:ctyp< $lid:label$ : string >> | <:ctyp< $lid:label$ : list string >>-> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of string ]) -> list S.elt>> 
+       | <:ctyp< $lid:label$ : bool ; $ty$ >> -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Exact of bool ])  -> $create_type _loc id ty$ >>
+       | <:ctyp< $lid:label$ : string ; $ty$ >> | <:ctyp< $lid:label$ : list string ; $ty$ >> -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Exact of string ]) -> $create_type _loc id ty$ >>
+       | _ -> raise BadType
+ 
    let create_search _loc id ty = 
-     <:str_item< value $lid:"search__"^id^"__"$ l h =
+     
+     <:str_item< value $lid:"search__"^id^"__"$ l h : $create_type _loc id ty $ = 
              $create_params ty _loc id ty$ 
      
 	

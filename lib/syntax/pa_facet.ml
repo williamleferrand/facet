@@ -25,28 +25,7 @@ struct
   exception BadType
 
   (* Create the search function ****************************************************)
-  (* ($lid:label$ = `All) *)
-    (*
-  let rec build_pattern _loc id ty = 
-    match ty with 
-      | <:ctyp< $lid:label$ : $lid:_$ >> -> [ <:patt< ? ($lid:label$ = `All) >> ] 
-      | <:ctyp< $lid:label$ : $lid:_$; $ty$ >> -> [ <:patt< $build_pattern _loc id ty$ >> ] 
-    *)										
-
-
-  let rec create_aux_by_field _loc id ty =
-    match ty with 
-    | <:ctyp< $lid:label$ : $_$ >> -> 
-      <:expr< 
-	 fun c r t -> 
-	   match c with 
-	       [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) t r ] >>
-    | <:ctyp< $lid:label$ : $_$ ; $ty$ >> ->
-      <:expr< 
-	  (fun c r t -> 
-	    match c with 
-		[ `All -> Hashtbl.fold (fun _ v acc -> $create_aux_by_field _loc id ty$ acc v ) t r ]) $lid:label$ >>
-   
+ 
     let rec create_expr _loc id ty = 
       match ty with 
 	| <:ctyp< $lid:label$ : bool >> | <:ctyp< $lid:label$ : string >> ->
@@ -65,14 +44,16 @@ struct
 	    fun h acc -> 
 	      match $lid:label$ with 
 		  [ `All -> Hashtbl.fold (fun _ v acc -> $create_expr _loc id ty$ v acc) h acc ] >>
+	| _ -> raise BadType
 
    let rec create_params params _loc id ty = 
      match ty with 
        | <:ctyp< $lid:label$ : $_$ >> -> <:expr< let f ? ($lid:label$ = `All) = S.elements ($create_expr _loc id params$ h S.empty) in f >>
        | <:ctyp< $lid:label$ : $_$; $ty$ >> -> <:expr< let f ? ($lid:label$ = `All) = $create_params params _loc id ty$ in f >>
-	 
+       | _ -> raise BadType
+
    let create_search _loc id ty = 
-	  <:str_item< value $lid:"search__"^id^"__"$ l h =
+     <:str_item< value $lid:"search__"^id^"__"$ l h =
              $create_params ty _loc id ty$ 
      
 	
@@ -86,20 +67,21 @@ struct
 	<:expr< fun e h -> Hashtbl.add h e.$lid:label$ e >>
       | <:ctyp< $lid:label$ : list string >> -> 
 	<:expr< fun e h -> List.iter (fun s -> Hashtbl.add h s e) e.$lid:label$ >>
-      |  <:ctyp< $lid:label$ : bool ; $ty$ >> -> 
-      <:expr< 
-	fun e h -> 
-	  let h = 
-	    try 
-	      Hashtbl.find h e.$lid:label$ 
-	    with [ Not_found -> let nt = Hashtbl.create 0 in do { Hashtbl.add h e.$lid:label$ nt; nt } ] in  
-	  $create_insert_by_field _loc id ty$ e h >>
+      | <:ctyp< $lid:label$ : bool ; $ty$ >> -> 
+        <:expr< 
+	  fun e h -> 
+	    let h = 
+	      try 
+		Hashtbl.find h e.$lid:label$ 
+	      with [ Not_found -> let nt = Hashtbl.create 0 in do { Hashtbl.add h e.$lid:label$ nt; nt } ] in  
+	    $create_insert_by_field _loc id ty$ e h >>
+      | _ -> raise BadType
 
   let create_insert _loc id ty =
     	<:str_item< value $lid:("insert__"^id^"__")$ l h e = 
            $create_insert_by_field _loc id ty$ e h
 	>>
-
+	     
 	    
   (* Create the type that handles the weak pointers **********************************)
 

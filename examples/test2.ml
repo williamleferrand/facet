@@ -1,4 +1,11 @@
-type e = { compensation : bool; keywords : string list }
+(* Simple usage example of facet *)
+(* module FST =
+struct *)
+type 'a outt =
+  compensation: [ | `All | `Exact of bool ] ->
+    keywords: [ | `All | `Exact of string ] -> 'a list
+
+type e = { uid : string; compensation : bool; keywords : string list }
 
 let test_prefix prefix =
   let l = String.length prefix
@@ -10,50 +17,121 @@ module E = struct type t = e
   
 module S = Set.Make(E)
   
-type structure__e__ = (bool, (string, e Weak.t) Hashtbl.t) Hashtbl.t
+type structure__e__ =
+  (string, (bool, (string, e Weak.t) Hashtbl.t) Hashtbl.t) Hashtbl.t
 
 let create__e__ () = Hashtbl.create 0
   
 let insert__e__ l h e =
-  (fun e h ->
-     let h =
-       try Hashtbl.find h e.compensation
-       with
-       | Not_found ->
-           let nt = Hashtbl.create 0 in (Hashtbl.add h e.compensation nt; nt)
-     in (fun e h -> List.iter (fun s -> Hashtbl.add h s e) e.keywords) e h)
-    e h
+  let w = Weak.create 1
+  in
+    (Facet.Lifesaver.insert l e;
+     Weak.set w 0 (Some e);
+     (fun e w h ->
+        let h =
+          try Hashtbl.find h e.uid
+          with
+          | Not_found ->
+              let nt = Hashtbl.create 0 in (Hashtbl.add h e.uid nt; nt)
+        in
+          (fun e w h ->
+             let h =
+               try Hashtbl.find h e.compensation
+               with
+               | Not_found ->
+                   let nt = Hashtbl.create 0
+                   in (Hashtbl.add h e.compensation nt; nt)
+             in
+               (fun e w h ->
+                  List.iter (fun s -> Hashtbl.add h s ((e.uid), w))
+                    e.keywords)
+                 e w h)
+            e w h)
+       e w h)
   
-let search__e__ l h =
-  let f ~compensation =
-    let f ~keywords =
-      S.elements
-        ((fun h acc ->
-            match compensation with
-            | `All ->
-                Hashtbl.fold
-                  (fun _ v acc ->
-                     (fun h acc ->
-                        match keywords with
-                        | `All ->
-                            Hashtbl.fold (fun _ v acc -> S.add v acc) h acc
-                        | `Exact k ->
-                            (try S.add (Hashtbl.find h k) acc
-                             with | Not_found -> acc))
-                       v acc)
-                  h acc
-            | `Exact k ->
-                (try
-                   (fun h acc ->
-                      match keywords with
-                      | `All ->
-                          Hashtbl.fold (fun _ v acc -> S.add v acc) h acc
-                      | `Exact k ->
-                          (try S.add (Hashtbl.find h k) acc
-                           with | Not_found -> acc))
-                     (Hashtbl.find h k) acc
-                 with | Not_found -> acc))
-           h S.empty)
+let search__e__ l ld h :
+  uid: [> | `All | `Exact of string] ->
+    compensation: [> | `All | `Exact of bool] ->
+      keywords: [> | `All | `Exact of string] -> (S.elt list) Lwt.t =
+  let f ~uid =
+    let f ~compensation =
+      let f ~keywords =
+        let wl =
+          S.elements
+            ((fun h acc ->
+                match uid with
+                | `All ->
+                    Hashtbl.fold
+                      (fun _ v acc ->
+                         (fun h acc ->
+                            match compensation with
+                            | `All ->
+                                Hashtbl.fold
+                                  (fun _ v acc ->
+                                     (fun h acc ->
+                                        match keywords with
+                                        | `All ->
+                                            Hashtbl.fold
+                                              (fun _ v acc -> S.add v acc) h
+                                              acc
+                                        | `Exact k ->
+                                            (try S.add (Hashtbl.find h k) acc
+                                             with | Not_found -> acc))
+                                       v acc)
+                                  h acc
+                            | `Exact k ->
+                                (try
+                                   (fun h acc ->
+                                      match keywords with
+                                      | `All ->
+                                          Hashtbl.fold
+                                            (fun _ v acc -> S.add v acc) h
+                                            acc
+                                      | `Exact k ->
+                                          (try S.add (Hashtbl.find h k) acc
+                                           with | Not_found -> acc))
+                                     (Hashtbl.find h k) acc
+                                 with | Not_found -> acc))
+                           v acc)
+                      h acc
+                | `Exact k ->
+                    (try
+                       (fun h acc ->
+                          match compensation with
+                          | `All ->
+                              Hashtbl.fold
+                                (fun _ v acc ->
+                                   (fun h acc ->
+                                      match keywords with
+                                      | `All ->
+                                          Hashtbl.fold
+                                            (fun _ v acc -> S.add v acc) h
+                                            acc
+                                      | `Exact k ->
+                                          (try S.add (Hashtbl.find h k) acc
+                                           with | Not_found -> acc))
+                                     v acc)
+                                h acc
+                          | `Exact k ->
+                              (try
+                                 (fun h acc ->
+                                    match keywords with
+                                    | `All ->
+                                        Hashtbl.fold
+                                          (fun _ v acc -> S.add v acc) h acc
+                                    | `Exact k ->
+                                        (try S.add (Hashtbl.find h k) acc
+                                         with | Not_found -> acc))
+                                   (Hashtbl.find h k) acc
+                               with | Not_found -> acc))
+                         (Hashtbl.find h k) acc
+                     with | Not_found -> acc))
+               h S.empty)
+        in
+          Lwt_list.map_p
+            (function | (uid, None) -> ld uid | (_, Some v) -> Lwt.return v)
+            wl
+      in f
     in f
   in f
   
@@ -72,9 +150,9 @@ let _ = insert__e__ () s e1
   
 let _ = insert__e__ () s e2
   
-let ra = search__e__ () s ~compensation: `All ~keywords: `All
+let ra = search__e__ () s `All `All
   
-let rb = search__e__ () s ~compensation: (`Exact true) ~keywords: `All
+let rb = search__e__ () s (`Exact true) `All
   
 let _ = List.iter display ra
   

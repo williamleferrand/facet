@@ -7,35 +7,21 @@ module Lifesaver =
     type 'a t = unit 
   end
 
-module type ELT = 
-  sig
-    type t
-    type structure__t__ 
-
-    val lifesaver : t Lifesaver.t 
-    val insert__t__ : t Lifesaver.t -> structure__t__ -> t -> unit  
-  end
-
-
-type t = 
-    {
-      
-      compensation : bool ; 
-      keywords: string list ;
-      
-    } with facet
+type e = { compensation: bool ; keywords: string list } with facet
 	
+let test_prefix prefix = 
+  let l = String.length prefix in fun s -> String.length s >= l && String.sub s 0 l = prefix  
+
 let lifesaver = ()
-  
-  (*
-let s= create__t__ ()
-  
-let e = { compensation = true; 
-	  keywords = [ "ocaml"; "cool" ] } ;; 
 
-insert__t__ () s e ;;
+let s = create__e__ () 
 
-create_test ~test:"coucou" () 
-  *)
+let e1 = { compensation = true ; keywords = [ "ocaml"; "cool" ] } ;; 
+let e2 = { compensation = false ; keywords = [ "python"; "pascool" ] } ;; 
 
-let c :int = search__t__ 
+insert__e__ () s e1 ;;
+insert__e__ () s e2 ;; 
+
+let r = search__e__ () s ~compensation:`All ~keywords:`All ;; 
+
+List.iter (fun e -> Printf.printf "compensation: %b ; keywords: %s\n" e.compensation (String.concat ", " e.keywords)) r

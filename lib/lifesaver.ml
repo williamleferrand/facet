@@ -171,6 +171,6 @@ let create size max_memory_usage =
   let e = { head = None; 
 	    direct_access = Hashtbl.create 0 ; 
 	    size = size } in 
-  ignore (create_alarm e max_memory_usage) ;  
+  (* ignore (create_alarm e max_memory_usage) ;  *)
   e
 	

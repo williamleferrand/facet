@@ -16,6 +16,9 @@ test: syntax
 full: all 
 	ocamlbuild examples/test.byte 
 
+fullopt: all
+	ocamlbuild examples/test.native
+
 install: 
 	ocamlfind install facet META _build/lib/facet.cm* _build/lib/syntax/pa_facet.cm*
 

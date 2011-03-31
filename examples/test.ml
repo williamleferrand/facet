@@ -1,34 +1,81 @@
-(* Simple usage example of facet *)
+(* Stress test for facet *)
 
-(* module FST =
-struct *) 
 
-exception CantLoad
+module Index = 
+  struct 
+    type e = 
+	{ 
+	  uid: int ;
+	  compensation: bool ; 
+	  keywords: string list } with facet index (compensation, keywords) 
+	    
+    exception NoLoader
 
-type 'a outt = compensation:[ `All | `Exact of bool ] -> keywords:[ `All | `Exact of string ] -> 'a list 
-    
-type e = { uid: string ; compensation: bool ; keywords: string list } with facet index (compensation, keywords)
+    let l : e Facet.Lifesaver.t = Facet.Lifesaver.create (try int_of_string (Sys.argv.(2)) with _ -> 10000000) 400000000000.0
+    let s = create__e__ () 
+    let insert = insert__e__ l s 
+    let search = search__e__ l (fun uid -> Lwt.fail NoLoader) s
+    let display e = Printf.printf "compensation: %b ; keywords: %s\n" e.compensation (String.concat ", " e.keywords)
+      
+  end
 
-let l = Facet.Lifesaver.create 100 400000000.0
+include (Index)
 
-  let s = create__e__ () 
-  let insert = insert__e__ l s
-  let search = search__e__ l (fun uid -> Lwt.fail CantLoad) s
-  let display e = Printf.printf "compensation: %b ; keywords: %s\n" e.compensation (String.concat ", " e.keywords)
-(* end 
+Random.init 0 ;; 
 
-include (FST) 
-*)
+let keywords = [|
+"ocaml"; 
+"cours"; 
+"telecharger";
+"caml";
+"mli";
+"ocaml";
+"objective";
+"ocaml inria";
+"ocaml manual";
+"erlang c";
+"inria ocaml";
+"tutoriel ocaml";
+"tutorial ocaml";
+"da ocaml";
+"ocaml windows";
+"compiler ocaml";
+"tuto ocaml";
+"ocaml string";
+"graphics ocaml";
+"type ocaml";
+"ocaml liste";
+"ocaml array";
+"ide ocaml" |] 
 
-let e1 = { uid = "1" ; compensation = true ; keywords = [ "ocaml"; "cool" ] } ;; 
-let e2 = { uid = "2"; compensation = false ; keywords = [ "python"; "pascool" ] } ;; 
+let rec generate_random_keywords = function  
+  | 0 -> [] 
+  | n -> keywords.(Random.int 21) :: (generate_random_keywords (n-1))
 
-insert e1 ;;
-insert e2 ;; 
+let generate_random i = 
+  {
+    uid = i; 
+    compensation = Random.bool () ; 
+    keywords = generate_random_keywords (Random.int (try int_of_string Sys.argv.(3) with _ -> 5))
+  }
+
+let memorize = ref [] 
+let rec populate = function 
+  | 0 -> () 
+  | n -> let e = generate_random n in memorize := e :: !memorize ; insert e;  populate (n-1)
 
 open Lwt 
 
 let _ = 
-  search ~uid:`All ~compensation:`All ~keywords:`All >>= Lwt_list.iter_s (fun e -> display e ; return ())
-  >>= fun () -> print_endline ""; 
-  search ~uid:`All ~compensation:(`Exact true) ~keywords: `All  >>= Lwt_list.iter_s (fun e -> display e ; return ()) 
+  Lwt_main.run (
+  let size = int_of_string Sys.argv.(1) in
+  let t1 = Unix.times () in 
+  populate size; 
+  let t2 = Unix.times () in 
+  search ~compensation: (`Exact true) ~keywords: (`All) 
+    >>= fun r ->
+  let t3 = Unix.times () in 
+  Printf.printf "%d documents inserted in %f seconds\n" size (t2.Unix.tms_stime -. t1.Unix.tms_stime); 
+  Printf.printf "%d documents founds among %d documents in %f seconds\n" (List.length r) size (t3.Unix.tms_stime -. t2.Unix.tms_stime); 
+  return ()) 
+    

@@ -114,7 +114,11 @@ EXTEND Gram
 
 	  
       type $tds$;  
+      (* A Utility function *)
 	
+      value test_prefix prefix = let l = String.length prefix in 
+				 fun [ s -> String.length s >= l && String.sub s 0 l = prefix ]  ;
+
       module E = struct 
 	type t = $lid:id$ ;
 	value compare = compare;  

@@ -3,4 +3,20 @@ Facet is
  - a caching system, connected to the gc
  - a data retrieval engine
 
+USAGE (the express way) : 
+
+Use the keyword facet when declaring your record type e to generate insert__e__ and search__e__ functions : 
+    
+type e = 
+	 { 
+	    uid: int ;
+	    compensation: bool ; 
+	    keywords: string list } with facet index (compensation, keywords) 
+
+Then call the search function with the appropriate parameters, eg
+
+search ~compensation:`All ~keywords:`All
+search ~compensation:(`Exact false) ~keywords:(`Prefix "ocaml")
+
+
 william.le-ferrand@polytechnique.edu

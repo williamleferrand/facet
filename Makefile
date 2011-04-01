@@ -13,6 +13,9 @@ syntax:
 test: syntax
 	camlp4o _build/lib/syntax/pa_facet.cmo  examples/test.ml # -filter Camlp4AstLifter
 
+ui:
+	ocamlbuild lib/ui.cmo
+
 full: all 
 	ocamlbuild examples/test.byte 
 

@@ -19,4 +19,11 @@ search ~compensation:`All ~keywords:`All
 search ~compensation:(`Exact false) ~keywords:(`Prefix "ocaml")
 
 
+TODO : 
+
+* In pa_facet, remove Sets and use a structure where you can count the number of times where you insert a value
+* in `Or, use something more efficient than list (that is, with a faster mem)
+* for plain text search, there is a ton of optimization possible! 
+
+
 william.le-ferrand@polytechnique.edu

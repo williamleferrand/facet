@@ -1,8 +1,8 @@
- (*
-  * Facet
-  *
-  * 03 30 2011
-  *)
+(*
+ * Facet
+ *
+ * 03 30 2011
+ *)
 
 open Camlp4
 
@@ -12,9 +12,6 @@ struct
   let version = "0.1"
 end
 
-
-
-
 module Make (Syntax : Sig.Camlp4Syntax) =
 struct
   open Sig
@@ -22,9 +19,11 @@ struct
 
   (* Misc helpers ********************************************************************)
 
-  exception BadType
+  exception BadType    
 
-  (* Create the search function ****************************************************)
+  (* Ocsigen UI **********************************************************************)
+    
+  (* Create the search function ******************************************************)
  
     let rec create_expr _loc id ty = 
       match ty with 
@@ -35,20 +34,111 @@ struct
 		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc 
 		  | `Exact k -> try S.add (Hashtbl.find h k) acc with [ Not_found -> acc ] ] >>
 
-	| [ <:ctyp< $lid:label$ : string >> ] | [ <:ctyp< $lid:label$ : list string >> ] ->
+	| [ <:ctyp< $lid:label$ : string >> ] ->
+	  <:expr<
+	    fun h acc -> 
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc 
+		  | `Exact k -> try S.add (Hashtbl.find h k) acc with [ Not_found -> acc ]
+		  | `Prefix s -> Hashtbl.fold (fun k v acc -> if Str.string_match (Str.regexp_string_case_fold s) k 0 then S.add v acc else acc) h acc
+		  | `Contains s -> Hashtbl.fold (fun k v acc -> try ignore (Str.search_forward (Str.regexp_string_case_fold s) k 0) ; S.add v acc with [ Not_found -> acc ]) h acc   
+		 (* | Prefix p -> Hashtbl.fold (fun k v acc -> if test_prefix p k then S.add v acc else acc) h acc  *) ] >>
+
+	| [ <:ctyp< $lid:label$ : list string >> ] ->
 	  <:expr<
 	    fun h acc -> 
 	      match $lid:label$ with 
 		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc 
 		  | `Exact k -> try S.add (Hashtbl.find h k) acc with [ Not_found -> acc ] 
-		 (* | Prefix p -> Hashtbl.fold (fun k v acc -> if test_prefix p k then S.add v acc else acc) h acc  *) ] >>
-		    
-	| <:ctyp< $lid:label$ : bool >> :: ty | <:ctyp< $lid:label$ : string >> :: ty -> 
-	  <:expr< 
+		  | `Or l -> Hashtbl.fold (fun k v acc -> if List.mem k l then S.add v acc else acc) h acc ] >>
+
+	| [ <:ctyp< $lid:label$ : int >> ] ->
+	  <:expr<
 	    fun h acc -> 
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v acc -> $create_expr _loc id ty$ v acc) h acc 
-		  | `Exact k -> try $create_expr _loc id ty$ (Hashtbl.find h k) acc with [ Not_found -> acc ] ] >>
+		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc 
+		  | `Exact k -> try S.add (Hashtbl.find h k) acc with [ Not_found -> acc ] 
+		  | `About (i, m) -> Hashtbl.fold (fun k v acc -> if k <= i + m && k >=i-m then S.add v acc else acc) h acc 
+		  | `Inf i -> Hashtbl.fold (fun k v acc -> if k <= i then S.add v acc else acc) h acc 
+		  | `Sup i -> Hashtbl.fold (fun k v acc -> if k >= i then S.add v acc else acc) h acc ] >>
+
+	| [ <:ctyp< $lid:label$ : date >> ] ->
+	  <:expr<
+	    fun h acc -> 
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc 
+		  | `Exact k -> try S.add (Hashtbl.find h k) acc with [ Not_found -> acc ] 
+		  | `Before i -> Hashtbl.fold (fun k v acc -> if k <= i then S.add v acc else acc) h acc 
+		  | `After i -> Hashtbl.fold (fun k v acc -> if k >= i then S.add v acc else acc) h acc ] >>
+
+	| [ <:ctyp< $lid:label$ : period >> ] ->
+	  <:expr<
+	    fun h acc -> 
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> S.add v acc) h acc 
+ 		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v acc -> if p2 >= v1 && p1 <= v2 then S.add v acc else acc) h acc 
+		  ] >>
+	    
+	| <:ctyp< $lid:label$ : bool >> :: ty -> 
+	  <:expr< 
+	    fun h acc -> 
+	      let __nxt = $create_expr _loc id ty$ in
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> __nxt v acc) h acc 
+		  | `Exact k -> try __nxt (Hashtbl.find h k) acc with [ Not_found -> acc ] ] >> 
+
+	| <:ctyp< $lid:label$ : string >> :: ty -> 
+	  <:expr< 
+	    fun h acc -> 
+	      let __nxt = $create_expr _loc id ty$ in
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> __nxt v acc) h acc 
+		  | `Exact k -> try $create_expr _loc id ty$ (Hashtbl.find h k) acc with [ Not_found -> acc ] 
+		  | `Prefix s -> Hashtbl.fold (fun k v acc -> if Str.string_match (Str.regexp_string_case_fold s) k 0 then __nxt v acc else acc) h acc
+		  | `Contains s -> Hashtbl.fold (fun k v acc -> try ignore (Str.search_forward (Str.regexp_string_case_fold s) k 0) ;  __nxt v acc with [ Not_found -> acc ]) h acc ] >>
+
+	| <:ctyp< $lid:label$ : string list >> :: ty -> 
+	  <:expr< 
+	    fun h acc -> 
+	      let __nxt = $create_expr _loc id ty$ in
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> __nxt v acc) h acc 
+		  | `Exact k -> try __nxt (Hashtbl.find h k) acc with [ Not_found -> acc ]
+		  | `Or l -> Hastbl.fold (fun k v acc -> if List.mem k l then __nxt v acc else acc) h acc
+		  ] >>
+	 
+	| <:ctyp< $lid:label$ : int >> :: ty -> 
+	  <:expr< 
+	    fun h acc -> 
+	      let __nxt = $create_expr _loc id ty$ in
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> __nxt v acc) h acc 
+		  | `Exact k -> try __nxt (Hashtbl.find h k) acc with [ Not_found -> acc ]
+		  | `About (i, m) -> Hashtbl.fold (fun k v acc -> if k <= i + m && k >=i-m then __nxt v acc else acc) h acc 
+		  | `Inf i -> Hashtbl.fold (fun k v acc -> if k <= i then __nxt v acc else acc) h acc 
+		  | `Sup i -> Hashtbl.fold (fun k v acc -> if k >= i then __nxt v acc else acc) h acc 
+		  ] >> 
+
+	| <:ctyp< $lid:label$ : date >> :: ty -> 
+	  <:expr< 
+	    fun h acc ->
+	      let __nxt = $create_expr _loc id ty$ in
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> __nxt v acc) h acc 
+		  | `Exact k -> try $create_expr _loc id ty$ (Hashtbl.find h k) acc with [ Not_found -> acc ]
+		  | `Before i -> Hashtbl.fold (fun k v acc -> if k <= i then __nxt v acc else acc) h acc 
+		  | `After i -> Hashtbl.fold (fun k v acc -> if k >= i then __nxt v acc else acc) h acc 
+		  ] >> 
+
+	| <:ctyp< $lid:label$ : period >> :: ty -> 
+	  <:expr< 
+	    fun h acc ->
+	      let __nxt = $create_expr _loc id ty$ in
+	      match $lid:label$ with 
+		  [ `All -> Hashtbl.fold (fun _ v acc -> __nxt v acc) h acc 
+		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v acc -> if p2 >= v1 && p1 <= v2 then __nxt v acc else acc) h acc 
+		  ] >> 
+		    
 	| _ -> failwith "1" 
 
    let rec create_params params _loc id  ty = 
@@ -67,29 +157,36 @@ struct
    let rec create_type _loc id ty = 
      match ty with 
        | [ <:ctyp< $lid:label$ : bool >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of bool ]) -> Lwt.t (list $lid:id$) >> 
-       | [ <:ctyp< $lid:label$ : string >> ] | [ <:ctyp< $lid:label$ : list string >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of string ]) -> Lwt.t (list $lid:id$) >> 
+       | [ <:ctyp< $lid:label$ : int >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of int | `About of (int * int) | `Inf of int | `Sup of int ]) -> Lwt.t (list $lid:id$) >> 
+       | [ <:ctyp< $lid:label$ : string >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of string | `Contains of string | `Prefix of string ]) -> Lwt.t (list $lid:id$) >> 
+       | [ <:ctyp< $lid:label$ : list string >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of string | `Or of list string ]) -> Lwt.t (list $lid:id$) >> 
+       | [ <:ctyp< $lid:label$ : date >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of date | `Before of date | `After of date ]) -> Lwt.t (list $lid:id$) >> 
+       | [ <:ctyp< $lid:label$ : period >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Overlaps of period ]) -> Lwt.t (list $lid:id$) >> 
        | <:ctyp< $lid:label$ : bool >> :: ty  -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Exact of bool ])  -> $create_type _loc id ty$ >>
-       | <:ctyp< $lid:label$ : string >> :: ty 
-       | <:ctyp< $lid:label$ : list string >> :: ty -> <:ctyp<  ~ $lid:label$ : ([> `All | `Exact of string ]) -> $create_type _loc id ty$ >>
+       | <:ctyp< $lid:label$ : int >> :: ty  -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Exact of int | `About of (int * int) | `Inf of int | `Sup of int ])  -> $create_type _loc id ty$ >>
+       | <:ctyp< $lid:label$ : string >> :: ty -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of string | `Contains of string | `Prefix of string ]) -> $create_type _loc id ty$ >> 
+       | <:ctyp< $lid:label$ : list string >> :: ty -> <:ctyp<  ~ $lid:label$ : ([> `All | `Exact of string | `Or of list string ]) -> $create_type _loc id ty$ >>
+       | <:ctyp< $lid:label$ : date >> :: ty  -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Exact of date | `Before of date | `After of date ])  -> $create_type _loc id ty$ >>
+       | <:ctyp< $lid:label$ : period >> :: ty  -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Overlaps of period ])  -> $create_type _loc id ty$ >>
        | l -> Printf.printf "Length of ty %d\n" (List.length l) ; failwith "9"  
  
    let create_search _loc id ty = 
      
-     <:str_item< value $lid:"search__"^id^"__"$ l ld h : $create_type _loc id ty $ = 
+     <:str_item< value $lid:"search__"^id^"__"$ l ld h : $create_type _loc id ty $  = 
              $create_params ty _loc id ty$ 
      
 	
 	  >>
 
-  (* Create the insert function ****************************************************)
+  (* Create the insert function *******************************************************)
     
   let rec create_insert_by_field _loc id ty = 
     match ty with 
-      | [ <:ctyp< $lid:label$ : bool >> ] | [ <:ctyp< $lid:label$ : string >> ] -> 
+      | [ <:ctyp< $lid:label$ : bool >> ] | [ <:ctyp< $lid:label$ : string >> ] | [ <:ctyp< $lid:label$ : int >> ] | [ <:ctyp< $lid:label$ : date >> ] | [ <:ctyp< $lid:label$ : period >> ] -> 
 	<:expr< fun e w h -> Hashtbl.add h e.$lid:label$ (e.uid, w) >>
       | [ <:ctyp< $lid:label$ : list string >> ] -> 
-	<:expr< fun e w h -> List.iter (fun s -> Hashtbl.add h s (e.uid, w)) e.$lid:label$ >>
-      | <:ctyp< $lid:label$ : bool >> :: ty | <:ctyp< $lid:label$ : string >> :: ty  -> 
+	<:expr< fun e w h -> List.iter (fun s -> Hashtbl.add h s (e.uid, w)) [ "" :: e.$lid:label$ ] >>
+      | <:ctyp< $lid:label$ : bool >> :: ty | <:ctyp< $lid:label$ : string >> :: ty | <:ctyp< $lid:label$ : int >> :: ty | <:ctyp< $lid:label$ : date >> :: ty  | <:ctyp< $lid:label$ : period >> :: ty  -> 
         <:expr< 
 	  fun e w h -> 
 	    let h = 
@@ -107,7 +204,7 @@ struct
 	      with [ Not_found -> let nt = Hashtbl.create 0 in 
 		do { Hashtbl.add h s nt; nt } ]  in
 	    
-	    $create_insert_by_field _loc id ty$ e w h ) e.$lid:label$  
+	    $create_insert_by_field _loc id ty$ e w h ) [ "" :: e.$lid:label$ ] 
 	   >>
       
       | _ -> failwith "4"
@@ -123,7 +220,7 @@ struct
 	>>
 	     
 	    
-  (* Create the type that handles the weak pointers **********************************)
+  (* Create the type that handles the weak pointers *************************************)
 
   let rec iter_over_fields_ _loc id index acc tp = 
     match tp with 
@@ -171,8 +268,7 @@ EXTEND Gram
       end ;     
 	
       module S = Set.Make (E) ; 
- 
- 
+  
       (* Builds the create function *)
       value $lid:"create__" ^ id ^"__"$ () = Hashtbl.create 0 ;
       (* Builds the insert function *) 

@@ -1,6 +1,7 @@
 (* Stress test for facet *)
 
 
+
 module Index = 
   struct 
     type e = 
@@ -72,7 +73,11 @@ let _ =
   let t1 = Unix.times () in 
   populate size; 
   let t2 = Unix.times () in 
+
+
   search ~compensation: (`Exact true) ~keywords: (`All) 
+
+
     >>= fun r ->
   let t3 = Unix.times () in 
   Printf.printf "%d documents inserted in %f seconds\n" size (t2.Unix.tms_stime -. t1.Unix.tms_stime); 

@@ -1,0 +1,13 @@
+name="facet"
+version="0.1.0"
+description="Facet"
+requires="lwt"
+archive(byte) = "facet.cmo"
+archive(syntax,native) = "facet.cmx"
+
+package "syntax" (
+ version = "0.1.0"
+ description = "Syntactic sugars for Facet"
+ requires = "camlp4"
+ archive(syntax,preprocessor) = "pa_mitosis.cmo"
+)

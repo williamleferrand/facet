@@ -25,6 +25,9 @@ fullopt: all
 install: 
 	ocamlfind install facet META _build/lib/facet.cm* _build/lib/syntax/pa_facet.cm*
 
+remove:
+	ocamlfind remove facet
+
 clean:
 	find . |grep '~'|xargs rm -rf 
 	ocamlbuild -clean

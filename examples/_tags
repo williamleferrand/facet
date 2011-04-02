@@ -1,3 +1,3 @@
-<test.ml>: pp(camlp4o /Users/hypios/reloaded/dev/facet/_build/lib/syntax/pa_facet.cmo)
+<test.ml>: pkg_str, pp(camlp4o /Users/hypios/reloaded/dev/facet/_build/lib/syntax/pa_facet.cmo)
 <test5.ml>: pkg_threads, pkg_lwt, pkg_ocsigen, pkg_calendar
-<*>: pkg_threads, pkg_lwt, pkg_lwt.extra
+<*>: pkg_threads, pkg_lwt, pkg_lwt.extra, pkg_str

@@ -51,7 +51,7 @@ let keywords = [|
 
 let rec generate_random_keywords = function  
   | 0 -> [] 
-  | n -> keywords.(Random.int 21) :: (generate_random_keywords (n-1))
+  | n -> keywords.(21) :: (generate_random_keywords (n-1))
 
 let generate_random i = 
   {
@@ -69,15 +69,13 @@ open Lwt
 
 let _ = 
   Lwt_main.run (
-  let size = int_of_string Sys.argv.(1) in
-  let t1 = Unix.times () in 
-  populate size; 
-  let t2 = Unix.times () in 
+    let size = int_of_string Sys.argv.(1) in
+    let t1 = Unix.times () in 
+    populate size; 
+    let t2 = Unix.times () in 
 
 
-  search ~compensation: (`Exact true) ~keywords: (`All) 
-
-
+  search ~compensation: (`All) ~keywords: (`All) 0 15
     >>= fun r ->
   let t3 = Unix.times () in 
   Printf.printf "%d documents inserted in %f seconds\n" size (t2.Unix.tms_stime -. t1.Unix.tms_stime); 

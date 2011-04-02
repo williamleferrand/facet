@@ -138,9 +138,8 @@ struct
 	      let __nxt = $create_expr _loc id ty$ in
 	      match $lid:label$ with 
 		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 || S.cardinal a <= d then __nxt v acc else acc) h acc
- 		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v ((pad, a) as acc) -> if p2 >= v1 && p1 <= v2 && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc 
+ 		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v ((pad, a) as acc) -> if (p1 <= v2 || (p2 >= v1 && p2 <= v2)) && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc 
 		  ] >>
-
 	| _ -> failwith "1" 
 
    let rec create_params params _loc id  ty = 

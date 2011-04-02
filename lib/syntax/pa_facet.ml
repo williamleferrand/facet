@@ -51,7 +51,10 @@ struct
 	      match $lid:label$ with 
 		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
 		  | `Exact k -> List.fold_left (fun a v -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) a ( Hashtbl.find_all h k ) 
-		  | `Or l -> Hashtbl.fold (fun k v a -> if List.mem k l && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a ] >>
+		  | `Or l -> Hashtbl.fold (fun k v a -> if List.mem k l && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a 
+		  | `OrWeak l -> Hashtbl.fold (fun k v a -> if k <> "" && list_mem_weak k l && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a 
+		  
+		  ] >>
 
 	| [ <:ctyp< $lid:label$ : int >> ] ->
 	  <:expr<
@@ -106,7 +109,8 @@ struct
 	      match $lid:label$ with 
 		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
 		  | `Exact k -> try __nxt (Hashtbl.find h k) a with [ Not_found -> a ] 
-		  | `Or l -> Hashtbl.fold (fun k v a -> if List.mem k l && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a ] >>
+		  | `Or l -> Hashtbl.fold (fun k v a -> if List.mem k l && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a 
+		  | `OrWeak l -> Hashtbl.fold (fun k v a -> if k <> "" && list_mem_weak k l && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a ] >>
 
         | <:ctyp< $lid:label$ : int >> :: ty ->
 	  <:expr<
@@ -158,13 +162,13 @@ struct
        | [ <:ctyp< $lid:label$ : bool >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of bool ]) -> Lwt.t (list $lid:id$) >> 
        | [ <:ctyp< $lid:label$ : int >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of int | `About of (int * int) | `Inf of int | `Sup of int ]) -> Lwt.t (list $lid:id$) >> 
        | [ <:ctyp< $lid:label$ : string >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of string | `Contains of string | `Prefix of string ]) -> Lwt.t (list $lid:id$) >> 
-       | [ <:ctyp< $lid:label$ : list string >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of string | `Or of list string ]) -> Lwt.t (list $lid:id$) >> 
+       | [ <:ctyp< $lid:label$ : list string >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of string | `Or of list string | `OrWeak of list string ]) -> Lwt.t (list $lid:id$) >> 
        | [ <:ctyp< $lid:label$ : date >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of date | `Before of date | `After of date ]) -> Lwt.t (list $lid:id$) >> 
        | [ <:ctyp< $lid:label$ : period >> ] -> <:ctyp< ~ $lid:label$ : ([> `All | `Overlaps of period ]) -> Lwt.t (list $lid:id$) >> 
        | <:ctyp< $lid:label$ : bool >> :: ty  -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Exact of bool ])  -> $create_type _loc id ty$ >>
        | <:ctyp< $lid:label$ : int >> :: ty  -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Exact of int | `About of (int * int) | `Inf of int | `Sup of int ])  -> $create_type _loc id ty$ >>
        | <:ctyp< $lid:label$ : string >> :: ty -> <:ctyp< ~ $lid:label$ : ([> `All | `Exact of string | `Contains of string | `Prefix of string ]) -> $create_type _loc id ty$ >> 
-       | <:ctyp< $lid:label$ : list string >> :: ty -> <:ctyp<  ~ $lid:label$ : ([> `All | `Exact of string | `Or of list string ]) -> $create_type _loc id ty$ >>
+       | <:ctyp< $lid:label$ : list string >> :: ty -> <:ctyp<  ~ $lid:label$ : ([> `All | `Exact of string | `Or of list string | `OrWeak of list string ]) -> $create_type _loc id ty$ >>
        | <:ctyp< $lid:label$ : date >> :: ty  -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Exact of date | `Before of date | `After of date ])  -> $create_type _loc id ty$ >>
        | <:ctyp< $lid:label$ : period >> :: ty  -> <:ctyp<  ~ $lid:label$ :  ([> `All | `Overlaps of period ])  -> $create_type _loc id ty$ >>
        | l -> Printf.printf "Length of ty %d\n" (List.length l) ; failwith "9"  
@@ -254,12 +258,16 @@ EXTEND Gram
        
 	<:str_item<
 
-	  
       type $tds$;  
       (* A Utility function *)
 	
       value test_prefix prefix = let l = String.length prefix in 
 				 fun [ s -> String.length s >= l && String.sub s 0 l = prefix ]  ;
+
+      value rec list_mem_weak k = fun [ [] -> False 
+				      | [ t::q ] -> 
+					try do { Str.search_forward (Str.regexp_string_case_fold t) k 0 ; True }
+					with [ Not_found -> list_mem_weak k q ] ] ; 
 
       module E = struct 
 	type t = (int * (Weak.t $lid:id$)) ;

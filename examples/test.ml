@@ -75,7 +75,7 @@ let _ =
     let t2 = Unix.times () in 
 
 
-  search ~compensation: (`All) ~keywords: (`All) 0 15
+  search ~compensation: (`All) ~keywords: (`OrWeak [ "ocaml" ]) 0 15
     >>= fun r ->
   let t3 = Unix.times () in 
   Printf.printf "%d documents inserted in %f seconds\n" size (t2.Unix.tms_stime -. t1.Unix.tms_stime); 

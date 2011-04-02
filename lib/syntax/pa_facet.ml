@@ -29,124 +29,123 @@ struct
       match ty with 
 	| [ <:ctyp< $lid:label$ : bool >> ] ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
-		  | `Exact k -> List.fold_left (fun a v -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) a (Hashtbl.find_all h k) 
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 then ((pad-1),a) else if S.cardinal a <= d then (0, S.add v a) else acc) h acc
+		  | `Exact k -> List.fold_left (fun ((pad, a) as acc) v -> if pad > 0 then ((pad-1), a) else if S.cardinal a <= d then (0, S.add v a) else acc) acc (Hashtbl.find_all h k) 
 		  (* | `Exact k -> try ((c+1), S.add (Hashtbl.find h k) acc) with [ Not_found -> a ] *) ] >>
 
 	| [ <:ctyp< $lid:label$ : string >> ] ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
-		  | `Exact k -> List.fold_left (fun a v -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) a (Hashtbl.find_all h k) 
-		  | `Prefix s -> Hashtbl.fold (fun k v a -> if Str.string_match (Str.regexp_string_case_fold s) k 0 && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
-		  | `Contains s -> Hashtbl.fold (fun k v a -> try ignore (Str.search_forward (Str.regexp_string_case_fold s) k 0) ; 
-										if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a with [ Not_found -> a]) h a ] >>
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 then ((pad-1),a) else if S.cardinal a <= d then (0, S.add v a) else acc) h acc
+		  | `Exact k -> List.fold_left (fun ((pad, a) as acc) v -> if pad > 0 then ((pad-1), a) else if S.cardinal a <= d then (0, S.add v a) else acc) acc (Hashtbl.find_all h k) 
+		  | `Prefix s -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if Str.string_match (Str.regexp_string_case_fold s) k 0 then (if pad > 0 then ((pad-1, a)) else if S.cardinal a <= d then (0, S.add v a) else acc) else acc) h acc
+		  | `Contains s -> Hashtbl.fold (fun k v ((pad, a) as acc) -> try ignore (Str.search_forward (Str.regexp_string_case_fold s) k 0) ; 
+										if pad > 0 then ((pad-1),a) else if S.cardinal a <= d then (0, S.add v a) else acc with [ Not_found -> acc]) h acc ] >>
 
 	| [ <:ctyp< $lid:label$ : list string >> ] ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
-		  | `Exact k -> List.fold_left (fun a v -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) a ( Hashtbl.find_all h k ) 
-		  | `Or l -> Hashtbl.fold (fun k v a -> if List.mem k l && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a 
-		  | `OrWeak l -> Hashtbl.fold (fun k v a -> if k <> "" && list_mem_weak k l && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a 
-		  
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 then ((pad-1),a) else if S.cardinal a <= d then (0, S.add v a) else acc) h acc
+		  | `Exact k -> List.fold_left (fun ((pad, a) as acc) v -> if pad > 0 then ((pad-1), a) else if S.cardinal a <= d then (0, S.add v a) else acc) acc (Hashtbl.find_all h k) 
+		  | `Or l -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if List.mem k l then (if pad > 0 then (pad-1, a) else if S.cardinal a <= d then (0, S.add v a) else acc) else acc) h acc 
+		  | `OrWeak l -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if list_mem_weak k l then (if pad > 0 then (pad-1, a) else if S.cardinal a <= d then (0, S.add v a) else acc) else acc) h acc 
 		  ] >>
 
 	| [ <:ctyp< $lid:label$ : int >> ] ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
-		  | `Exact k -> List.fold_left (fun a v -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) a ( Hashtbl.find_all h k ) 
-		  | `About (i, m) -> Hashtbl.fold (fun k v a -> if k <= i + m && k >=i-m && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
-		  | `Inf i -> Hashtbl.fold (fun k v a -> if k <= i && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
-		  | `Sup i -> Hashtbl.fold (fun k v a -> if k >= i && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a ] >>
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 then ((pad-1),a) else if S.cardinal a <= d then (0, S.add v a) else acc) h acc
+		  | `Exact k -> List.fold_left (fun ((pad, a) as acc) v -> if pad > 0 then ((pad-1), a) else if S.cardinal a <= d then (0, S.add v a) else acc) acc (Hashtbl.find_all h k) 
+		  | `About (i, m) -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k <= i + m && k >=i-m then (if pad > 0 then (pad-1, a) else if S.cardinal a <= d then (0, S.add v a) else acc) else acc) h acc
+		  | `Inf i -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k <= i then (if pad > 0 then (pad-1, a) else if S.cardinal a <= d then (0, S.add v a) else acc) else acc) h acc
+		  | `Sup i -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k >= i then (if pad > 0 then (pad-1, a) else if S.cardinal a <= d then (0, S.add v a) else acc) else acc) h acc ] >>
 
 	| [ <:ctyp< $lid:label$ : date >> ] ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
-		  | `Exact k -> List.fold_left (fun a v -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) a ( Hashtbl.find_all h k ) 
-		  | `Before i -> Hashtbl.fold (fun k v a -> if k <= i && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
-		  | `After i -> Hashtbl.fold (fun k v a -> if k >= i && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a ] >>
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 then ((pad-1),a) else if S.cardinal a <= d then (0, S.add v a) else acc) h acc
+		  | `Exact k -> List.fold_left (fun ((pad, a) as acc) v -> if pad > 0 then ((pad-1), a) else if S.cardinal a <= d then (0, S.add v a) else acc) acc (Hashtbl.find_all h k)
+		  | `Before i -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k <= i then (if pad > 0 then (pad-1, a) else if S.cardinal a <= d then (0, S.add v a) else acc) else acc) h acc
+		  | `After i -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k >= i then (if pad > 0 then (pad-1, a) else if S.cardinal a <= d then (0, S.add v a) else acc) else acc) h acc ] >>
 
 	| [ <:ctyp< $lid:label$ : period >> ] ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a
- 		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v a -> if p2 >= v1 && p1 <= v2 && S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) h a 
-		  ] >>
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 then ((pad-1),a) else if S.cardinal a <= d then (0, S.add v a) else acc) h acc
+ 		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v ((pad, a) as acc) -> if  not (p2 < v1 || p1 > v2) then (if pad > 0 then (pad-1, a) else if S.cardinal a <= d then (0, S.add v a) else acc) else acc) h acc 
+		  ] >> 
 	   
 	| <:ctyp< $lid:label$ : bool >> :: ty -> 
 	   <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      let __nxt = $create_expr _loc id ty$ in
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a 		    
-		  | `Exact k -> try __nxt (Hashtbl.find h k) a with [ Not_found -> a ] ] >> (* `Exact k -> List.fold_left (fun a v -> if S.cardinal a >= f && S.cardinal a <= d then S.add v a else a) a ( Hashtbl.find_all h k ) ] >> 
-											    *)
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 || S.cardinal a <= d then __nxt v acc else acc) h acc 		    
+		  | `Exact k -> try __nxt (Hashtbl.find h k) acc with [ Not_found -> acc ] ] >> 
+
 	| <:ctyp< $lid:label$ : string >> :: ty ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      let __nxt = $create_expr _loc id ty$ in
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
-		  | `Exact k -> try __nxt (Hashtbl.find h k) a with [ Not_found -> a ] 
-		  | `Prefix s -> Hashtbl.fold (fun k v a -> if Str.string_match (Str.regexp_string_case_fold s) k 0 && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
-		  | `Contains s -> Hashtbl.fold (fun k v a -> try ignore (Str.search_forward (Str.regexp_string_case_fold s) k 0) ; 
-										if S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a with [ Not_found -> a]) h a ] >>
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 || S.cardinal a <= d then __nxt v acc else acc) h acc
+		  | `Exact k -> try __nxt (Hashtbl.find h k) acc with [ Not_found -> acc ] 
+		  | `Prefix s -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if Str.string_match (Str.regexp_string_case_fold s) k 0 && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc
+		  | `Contains s -> Hashtbl.fold (fun k v ((pad, a) as acc) -> try ignore (Str.search_forward (Str.regexp_string_case_fold s) k 0) ; 
+								  if pad > 0 || S.cardinal a <= d then __nxt v acc else acc with [ Not_found -> acc]) h acc ] >>
 
 	| <:ctyp< $lid:label$ : list string >> :: ty ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      let __nxt = $create_expr _loc id ty$ in
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
-		  | `Exact k -> try __nxt (Hashtbl.find h k) a with [ Not_found -> a ] 
-		  | `Or l -> Hashtbl.fold (fun k v a -> if List.mem k l && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a 
-		  | `OrWeak l -> Hashtbl.fold (fun k v a -> if k <> "" && list_mem_weak k l && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a ] >>
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 || S.cardinal a <= d then __nxt v acc else acc) h acc
+		  | `Exact k -> try __nxt (Hashtbl.find h k) acc with [ Not_found -> acc ] 
+		  | `Or l -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if List.mem k l && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc 
+		  | `OrWeak l -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k <> "" && list_mem_weak k l && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc ] >>
 
         | <:ctyp< $lid:label$ : int >> :: ty ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      let __nxt = $create_expr _loc id ty$ in
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
-		  | `Exact k -> try __nxt (Hashtbl.find h k) a with [ Not_found -> a ]
-		  | `About (i, m) -> Hashtbl.fold (fun k v a -> if k <= i + m && k >=i-m && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
-		  | `Inf i -> Hashtbl.fold (fun k v a -> if k <= i && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
-		  | `Sup i -> Hashtbl.fold (fun k v a -> if k >= i && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a ] >>
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 || S.cardinal a <= d then __nxt v acc else acc) h acc
+		  | `Exact k -> try __nxt (Hashtbl.find h k) acc with [ Not_found -> acc ]
+		  | `About (i, m) -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k <= i + m && k >=i-m && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc
+		  | `Inf i -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k <= i && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc
+		  | `Sup i -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k >= i && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc ] >>
 
 	| <:ctyp< $lid:label$ : date >> :: ty ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      let __nxt = $create_expr _loc id ty$ in
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
-		  | `Exact k -> try __nxt (Hashtbl.find h k) a with [ Not_found -> a ]  
-		  | `Before i -> Hashtbl.fold (fun k v a -> if k <= i && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
-		  | `After i -> Hashtbl.fold (fun k v a -> if k >= i && S.cardinal a >= f && S.cardinal a <= d then __nxt a else a) h a ] >>
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 || S.cardinal a <= d then __nxt v acc else acc) h acc
+		  | `Exact k -> try __nxt (Hashtbl.find h k) acc with [ Not_found -> acc ]  
+		  | `Before i -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if k <= i && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc
+		  | `After i -> Hashtbl.fold (fun k v  ((pad, a) as acc) -> if k >= i && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc ] >>
 
 	| <:ctyp< $lid:label$ : period >> :: ty ->
 	  <:expr<
-	    fun h a -> 
+	    fun h ((pad, a) as acc) -> 
 	      let __nxt = $create_expr _loc id ty$ in
 	      match $lid:label$ with 
-		  [ `All -> Hashtbl.fold (fun _ v a -> if S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a
- 		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v a -> if p2 >= v1 && p1 <= v2 && S.cardinal a >= f && S.cardinal a <= d then __nxt v a else a) h a 
+		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if pad > 0 || S.cardinal a <= d then __nxt v acc else acc) h acc
+ 		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v ((pad, a) as acc) -> if p2 >= v1 && p1 <= v2 && (pad > 0 || S.cardinal a <= d) then __nxt v acc else acc) h acc 
 		  ] >>
 
 	| _ -> failwith "1" 
 
    let rec create_params params _loc id  ty = 
      match ty with 
-       | [ <:ctyp< $lid:label$ : $_$ >> ] -> <:expr< let f ~ $lid:label$ = let wl = ($create_expr _loc id params$ h S.empty) in 
+       | [ <:ctyp< $lid:label$ : $_$ >> ] -> <:expr< let f ~ $lid:label$ = let (_, wl) = ($create_expr _loc id params$ h (f, S.empty)) in 
 									Lwt_list.map_p 
 									  (fun 
 									    [ (uid, w) -> 
@@ -266,7 +265,7 @@ EXTEND Gram
 
       value rec list_mem_weak k = fun [ [] -> False 
 				      | [ t::q ] -> 
-					try do { Str.search_forward (Str.regexp_string_case_fold t) k 0 ; True }
+					try do { ignore (Str.search_forward (Str.regexp_string_case_fold t) k 0) ; True }
 					with [ Not_found -> list_mem_weak k q ] ] ; 
 
       module E = struct 

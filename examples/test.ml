@@ -8,7 +8,8 @@ module Index =
 	{ 
 	  uid: int ;
 	  compensation: bool ; 
-	  keywords: string list } with facet index (compensation, keywords) 
+	  keywords: string list
+	  } with facet index (compensation, keywords) 
 	    
     exception NoLoader
 
@@ -16,8 +17,8 @@ module Index =
     let s = create__e__ () 
     let insert = insert__e__ l s 
     let search = search__e__ l (fun uid -> Lwt.fail NoLoader) s
-    let display e = Printf.printf "compensation: %b ; keywords: %s\n" e.compensation (String.concat ", " e.keywords)
-      
+   (* let display e = Printf.printf "compensation: %b ; keywords: %s\n" e.compensation (String.concat ", " e.keywords)
+   *) 
   end
 
 include (Index)

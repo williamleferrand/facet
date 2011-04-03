@@ -43,7 +43,7 @@ struct
 		  | `Exact k -> List.fold_left (fun ((pad, a) as acc) v -> if S.cardinal pad < f then ((S.add v pad), a) else if S.cardinal a <= d then (if S.mem v pad then (pad, a) else (pad, S.add v a)) else acc) acc (Hashtbl.find_all h k) 
 		  | `Prefix s -> Hashtbl.fold (fun k v ((pad, a) as acc) -> if Str.string_match (Str.regexp_string_case_fold s) k pad then (if S.cardinal pad < f then (((S.add v pad), a)) else if S.cardinal a <= d then (if S.mem v pad then (pad, a) else (pad, S.add v a)) else acc) else acc) h acc
 		  | `Contains s -> Hashtbl.fold (fun k v ((pad, a) as acc) -> try ignore (Str.search_forward (Str.regexp_string_case_fold s) k pad) ; 
-										if S.cardinal pad < f then ((S.add v pad),a) else if S.cardinal a <= d then (if S.mem v pad then (pad, a) else (pad, S.add v a)) else acc with [ Not_found -> acc]) h acc ] >>
+										  if S.cardinal pad < f then ((S.add v pad),a) else if S.cardinal a <= d then (if S.mem v pad then (pad, a) else (pad, S.add v a)) else acc with [ Not_found -> acc]) h acc ] >>
 
 	| [ <:ctyp< $lid:label$ : list string >> ] ->
 	  <:expr<
@@ -138,7 +138,7 @@ struct
 	      let __nxt = $create_expr _loc id ty$ in
 	      match $lid:label$ with 
 		  [ `All -> Hashtbl.fold (fun _ v ((pad, a) as acc) -> if S.cardinal pad < f || S.cardinal a <= d then __nxt v acc else acc) h acc
- 		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v ((pad, a) as acc) -> if (p1 <= v2 || (p2 >= v1 && p2 <= v2)) && (S.cardinal pad < f || S.cardinal a <= d) then __nxt v acc else acc) h acc 
+ 		  | `Overlaps (p1, p2) -> Hashtbl.fold (fun (v1, v2) v ((pad, a) as acc) -> if (p1 <= p2) && (p1 <= v2 || (p2 >= v1 && p2 <= v2)) && (S.cardinal pad < f || S.cardinal a <= d) then __nxt v acc else acc) h acc 
 		  ] >>
 	| _ -> failwith "1" 
 
